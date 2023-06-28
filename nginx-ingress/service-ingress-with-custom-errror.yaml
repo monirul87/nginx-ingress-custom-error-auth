@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/auth-realm: Authentication Required
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location @custom_401 {
+          return 401 '<?xml version="1.0" encoding="UTF-8"?>
+            <OTA_ErrorRS xmlns="http://www.opentravel.org/OTA/2003/05"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://secure.levartdistributionsystems.com.au/html/schema/OTA/2015B/OTA_ErrorRS.xsd"
+             TimeStamp="2020-06-19T22:21:23+08:00" 
+             Version="1.0" 
+             Status="NotProcessed"
+             ErrorCode="AuthError"
+             ErrorMessage="Invalid Username and/or Password" />';
+      }
+      error_page 401 @custom_401;
+  labels:
+    app: ingress-ari-core-service
+  name: ingress-ari-core-service
+  namespace: ari
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ari.devapi.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: ari-core-service
+            port:
+              number: 8082
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - ari.devapi.com
+    secretName: ari-core-tls
